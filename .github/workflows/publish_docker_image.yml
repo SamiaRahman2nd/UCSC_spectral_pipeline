@@ -1,18 +1,11 @@
 name: Publish Docker image
 
-# This workflow manages the testing, building, and publishing of docker images
-# On a pull request to main:
-#   If docker related files are changed, the image is test built and not published
-# On a push to main (or a new tag is created on master):
-#   The docker image is built and tagged with latest and and / or new tag version
-
 on:
   push:
-    branches: [master]
     paths:
-      - "*/Dockerfile"
-      - ".github/workflows/publish_docker_image.yml"
-      - "*/requirements.txt"
+      - '**/Dockerfile'
+      - '.github/workflows/publish_docker_image.yml'
+      - '**/requirements.txt'
 
 jobs:
   docker:
@@ -20,36 +13,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Prepare
-        id: prep
-        run: |
-          DOCKER_IMAGE=ghcr.io/msiebert1/ucsc_spectral_pipeline
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-            TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:latest"
-          else
-            TAGS="${DOCKER_IMAGE}:latest"
-          fi
-          echo ::set-output name=tags::${TAGS}
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Login to ghcr
+      - name: Login Action
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push
-        id: docker_build
+      - name: Setup Buildx Action
+        uses: docker/setup-buildx-action@v2
+      - name: Build Push Action
         uses: docker/build-push-action@v3
         with:
-          builder: ${{ steps.buildx.outputs.name }}
-          context: ./docker
-          file: ./docker/Dockerfile
-          tags: ${{ steps.prep.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: ${{ github.event_name != 'pull_request'}}
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:latest
